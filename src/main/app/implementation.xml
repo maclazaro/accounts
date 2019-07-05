@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+	<spring:beans>
+		<spring:bean id="DerbyDB" name="DerbyDB"
+			class="org.enhydra.jdbc.standard.StandardDataSource">
+			<spring:property name="url"
+				value="jdbc:derby://localhost:1527/memory:training" />
+			<spring:property name="driverName"
+				value="org.apache.derby.jdbc.ClientDriver" />
+		</spring:bean>
+	</spring:beans>
+	<db:derby-config name="Derby_Configuration"
+		dataSource-ref="DerbyDB" doc:name="Derby Configuration" />
+	<flow name="getAccountsFlow">
+		<http:listener config-ref="httpListenerConfig" path="/accounts"
+			allowedMethods="GET" doc:name="HTTP" />
+		<db:select config-ref="Derby_Configuration" doc:name="Database">
+			<db:parameterized-query><![CDATA[select * from accounts]]></db:parameterized-query>
+		</db:select>
+		<dw:transform-message doc:name="Transform Message">
+			<dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	id: payload01.ACCOUNTID,
+	address: {
+		street: payload01.STREET,
+		city: payload01.CITY,
+		state: payload01.STATE,
+		postal: payload01.POSTAL,
+		country: payload01.COUNTRY
+	},
+	retrievalDate: now,
+	type: "Derby DB"
+})]]></dw:set-payload>
+		</dw:transform-message>
+	</flow>
+</mule>
